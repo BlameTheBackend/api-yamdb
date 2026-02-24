@@ -99,39 +99,3 @@ class Title(models.Model):
 
     def __str__(self):
         return self.name
-
-
-class GenreTitle(models.Model):
-    """
-    Промежуточная таблица для связи многие-ко-многим между Title и Genre.
-    Обеспечивает связь между произведениями и жанрами с дополнительной
-    возможностью расширения (например, добавить поле порядка сортировки).
-    """
-
-    genre = models.ForeignKey(
-        Genre,
-        on_delete=models.CASCADE,
-        related_name='genre_titles',
-        verbose_name='Жанр'
-    )
-    title = models.ForeignKey(
-        Title,
-        on_delete=models.CASCADE,
-        related_name='title_genres',
-        verbose_name='Произведение'
-    )
-
-    class Meta:
-        db_table = 'genre_title'
-        constraints = [
-            models.UniqueConstraint(
-                fields=['genre', 'title'],
-                name='unique_genre_title'
-            )
-        ]
-        verbose_name = 'жанр произведения'
-        verbose_name_plural = 'Жанры произведения'
-        ordering = ['genre']
-
-    def __str__(self):
-        return f'{self.title.name}  ({self.genre.title})'
