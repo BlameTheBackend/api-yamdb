@@ -19,10 +19,6 @@ class Category(models.Model):
         unique=True,
         verbose_name='Уникальный идентификатор'
     )
-    description = models.TextField(
-        blank=True,
-        verbose_name='Описание категории'
-    )
 
     class Meta:
         db_table = 'category'
@@ -46,10 +42,6 @@ class Genre(models.Model):
     slug = models.SlugField(
         unique=True,
         verbose_name='Уникальный идентификатор'
-    )
-    description = models.TextField(
-        blank=True,
-        verbose_name='Описание жанра'
     )
 
     class Meta:
