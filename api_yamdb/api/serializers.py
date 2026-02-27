@@ -1,7 +1,69 @@
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from reviews.models import Category, Genre, Title, Review, Comment
 from reviews.constants import MIN_RATE, MAX_RATE
+from users.utils import check_confirmation_code
+
+
+User = get_user_model()
+
+
+class SignupSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    username = serializers.CharField(max_length=150)
+
+    def validate(self, data):
+        if User.objects.filter(username=data['username']).exists():
+            user = User.objects.get(username=data['username'])
+            if user.email != data['email']:
+                raise serializers.ValidationError(
+                    'Пользователь уже существует'
+                )
+        return data
+
+    def create(self, validated_data):
+        user, _ = User.objects.get_or_create(
+            username=validated_data['username'],
+            defaults={'email': validated_data['email']}
+        )
+        return user
+
+
+class TokenSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    confirmation_code = serializers.CharField()
+
+    def validate(self, data):
+        try:
+            user = User.objects.get(username=data['username'])
+        except User.DoesNotExist:
+            raise serializers.ValidationError('Пользователь не найден')
+
+        if not check_confirmation_code(user, data['confirmation_code']):
+            raise serializers.ValidationError('Неверный код подтверждения')
+
+        data['user'] = user
+        return data
+
+
+class UserSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        fields = (
+            'username', 'email', 'first_name', 'last_name', 'bio', 'role'
+        )
+        model = User
+
+
+class MyselfSerializer(serializers.ModelSerializer):
+    role = serializers.CharField(read_only=True)
+
+    class Meta:
+        fields = (
+            'username', 'email', 'first_name', 'last_name', 'bio', 'role'
+        )
+        model = User
 
 
 class CategorySerializer(serializers.ModelSerializer):

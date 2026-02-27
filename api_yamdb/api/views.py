@@ -1,10 +1,19 @@
+from django.contrib.auth import get_user_model
+from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
-from rest_framework import viewsets
+from rest_framework import viewsets, filters, status
+from rest_framework.decorators import action
+from rest_framework.views import APIView
 from rest_framework.filters import SearchFilter
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework_simplejwt.tokens import AccessToken
 from django.db.models import Avg
 
 from reviews.models import Category, Genre, Title, Review
+from users.utils import generate_confirmation_code
 from .permissions import (
+    IsAdminRole,
     IsAdminOrReadOnly,
     IsAuthorOrAdminOrModeratorOrReadOnly
 )
@@ -13,8 +22,66 @@ from .serializers import (
     GenreSerializer,
     TitleSerializer,
     ReviewSerializer,
-    CommentSerializer
+    CommentSerializer,
+    UserSerializer,
+    MyselfSerializer,
+    SignupSerializer,
+    TokenSerializer
 )
+
+User = get_user_model()
+
+
+class SignupView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = SignupSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        confirmation_code = generate_confirmation_code(user)
+        send_mail(
+            subject='Ваш код подтверждения',
+            message=f'Код: {confirmation_code}',
+            from_email=None,
+            recipient_list=[user.email]
+        )
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class TokenView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = TokenSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        token = AccessToken.for_user(user)
+        return Response({'token': str(token)}, status=status.HTTP_200_OK)
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAdminRole]
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('username',)
+    lookup_field = 'username'
+
+    @action(
+        methods=['GET', 'PATCH'],
+        detail=False,
+        permission_classes=[IsAuthenticated])
+    def me(self, request):
+        user = request.user
+        if request.method == 'GET':
+            serializer = MyselfSerializer(user)
+        else:
+            serializer = MyselfSerializer(
+                user, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+        return Response(serializer.data)
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
