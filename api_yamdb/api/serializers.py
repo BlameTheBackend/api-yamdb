@@ -69,14 +69,14 @@ class MyselfSerializer(serializers.ModelSerializer):
 class CategorySerializer(serializers.ModelSerializer):
 
     class Meta:
-        fields = ('title', 'slug')
+        fields = ('name', 'slug')
         model = Category
 
 
 class GenreSerializer(serializers.ModelSerializer):
 
     class Meta:
-        fields = ('title', 'slug')
+        fields = ('name', 'slug')
         model = Genre
 
 
@@ -90,10 +90,20 @@ class TitleSerializer(serializers.ModelSerializer):
         queryset=Genre.objects.all(),
         many=True
     )
+    rating = serializers.IntegerField(read_only=True)
 
     class Meta:
-        fields = ('id', 'name', 'year', 'description', 'category', 'genre')
+        fields = (
+            'id', 'name', 'year', 'rating',
+            'description', 'category', 'genre'
+        )
         model = Title
+
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        rep['category'] = CategorySerializer(instance.category).data
+        rep['genre'] = GenreSerializer(instance.genre.all(), many=True).data
+        return rep
 
 
 class ReviewSerializer(serializers.ModelSerializer):

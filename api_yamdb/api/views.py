@@ -8,6 +8,7 @@ from rest_framework.filters import SearchFilter
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import AccessToken
+from django.db.models import Avg
 
 from reviews.models import Category, Genre, Title, Review
 from users.utils import generate_confirmation_code
@@ -96,7 +97,7 @@ class GenreViewSet(viewsets.ModelViewSet):
 
 
 class TitleViewSet(viewsets.ModelViewSet):
-    queryset = Title.objects.all()
+    queryset = Title.objects.annotate(rating=Avg('reviews__score'))
     serializer_class = TitleSerializer
     permission_classes = [IsAdminOrReadOnly]
     filter_backends = (SearchFilter,)
