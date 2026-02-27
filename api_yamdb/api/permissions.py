@@ -1,34 +1,51 @@
 from rest_framework import permissions
 
 
-class IsAdminRole(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return (request.user.is_authenticated
-                and request.user.role == request.user.Role.ADMIN)
+class BasePermission(permissions.BasePermission):
+    """Базовый класс с общими методами"""
 
-
-class IsAdminOrReadOnly(permissions.BasePermission):
-    def has_permission(self, request, view):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        return (
-            request.user
-            and request.user.is_authenticated
-            and request.user.is_admin
+    def _is_admin(self, user):
+        """Проверка, является ли пользователь администратором"""
+        return user.is_authenticated and (
+            user.role == 'admin' or user.is_staff
         )
 
 
-class IsAuthorOrAdminOrModeratorOrReadOnly(permissions.BasePermission):
+class IsAdminRole(BasePermission):
+    """Только для администраторов"""
+
+    def has_permission(self, request, view):
+        return self._is_admin(request.user)
+
+
+class IsAdminOrReadOnly(BasePermission):
+    """Администраторы могут всё, остальные только читать"""
+
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
             return True
-        return request.user.is_authenticated
+        return self._is_admin(request.user)
+
+
+class IsAuthorOrAdminOrModeratorOrReadOnly(BasePermission):
+    """
+    Права для отзывов и комментариев:
+    - Читать могут все
+    - Изменять может автор, админ, модератор
+    """
+
+    def has_permission(self, request, view):
+        return (request.method in permissions.SAFE_METHODS
+                or request.user.is_authenticated)
 
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
             return True
+        user = request.user
+        if not user.is_authenticated:
+            return False
         return (
-            request.user.is_admin
-            or request.user.is_moderator
-            or obj.author == request.user
+            obj.author == user
+            or self._is_admin(user)
+            or user.role == 'moderator'
         )

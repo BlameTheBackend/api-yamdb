@@ -1,88 +1,121 @@
 import csv
+from pathlib import Path
+
 from django.core.management.base import BaseCommand
-from reviews.models import Category, Genre, Title
-# from users.models import User
-from reviews.models import Review, Comment
+from django.db import transaction
+
+from reviews.models import Category, Genre, Title, Review, Comment
+from users.models import User
+
+
+DATA_DIR = Path('static/data')
+CSV_FILES = {
+    'category.csv': Category,
+    'genre.csv': Genre,
+    'titles.csv': Title,
+    'genre_title.csv': 'many_to_many',
+    'users.csv': User,
+    'review.csv': Review,
+    'comments.csv': Comment,
+}
 
 
 class Command(BaseCommand):
-    help = 'Import data from csv files'
+    """Команда для импорта данных из CSV файлов."""
 
+    help = 'Импорт данных из CSV файлов в базу данных'
+
+    def add_arguments(self, parser):
+        """Добавление аргументов командной строки."""
+        parser.add_argument(
+            '--data-dir',
+            type=str,
+            default='static/data',
+            help='Директория с CSV файлами (по умолчанию: static/data)'
+        )
+
+    def _import_model_data(self, filename, model):
+        """Импорт данных для обычной модели."""
+        filepath = DATA_DIR / filename
+        if not filepath.exists():
+            self.stderr.write(f'Файл не найден: {filepath}')
+            return
+
+        foreign_keys = {
+            Title: {'category': 'category_id'},
+            Review: {'author': 'author_id', 'title': 'title_id'},
+            Comment: {'author': 'author_id', 'review': 'review_id'},
+        }
+
+        with open(filepath, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            count = 0
+            for row in reader:
+                data = row.copy()
+
+                if model in foreign_keys:
+                    for field, fk_field in foreign_keys[model].items():
+                        if field in data:
+                            data[fk_field] = data.pop(field)
+
+                _, created = model.objects.get_or_create(**data)
+                if created:
+                    count += 1
+
+            self.stdout.write(f'{filename}: импортировано {count} записей')
+
+    def _import_genre_title(self, filename):
+        """Специальный импорт для связи многие-ко-многим."""
+        filepath = DATA_DIR / filename
+        if not filepath.exists():
+            self.stderr.write(f'Файл не найден: {filepath}')
+            return
+
+        with open(filepath, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            count = 0
+            for row in reader:
+                try:
+                    title = Title.objects.get(id=row['title_id'])
+                    genre = Genre.objects.get(id=row['genre_id'])
+                    title.genre.add(genre)
+                    count += 1
+                except (Title.DoesNotExist, Genre.DoesNotExist) as e:
+                    self.stderr.write(
+                        f'Ошибка: {e} в строке {row}'
+                    )
+            self.stdout.write(
+                f'{filename}: создано {count} связей Title-Genre'
+            )
+
+    @transaction.atomic
     def handle(self, *args, **options):
-        with open('static/data/category.csv', 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                Category.objects.get_or_create(
-                    id=row['id'],
-                    name=row['name'],
-                    slug=row['slug']
-                )
-        self.stdout.write('Categories imported')
+        """
+        Основной обработчик команды.
+        Использует транзакцию для отката при ошибках.
+        """
+        global DATA_DIR
+        DATA_DIR = Path(options['data_dir'])
 
-        with open('static/data/genre.csv', 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                Genre.objects.get_or_create(
-                    id=row['id'],
-                    name=row['name'],
-                    slug=row['slug']
-                )
-        self.stdout.write('Genres imported')
+        self.stdout.write('Начало импорта данных...')
 
-        with open('static/data/titles.csv', 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                Title.objects.get_or_create(
-                    id=row['id'],
-                    name=row['name'],
-                    year=row['year'],
-                    category_id=row['category']
-                )
-        self.stdout.write('Titles imported')
+        import_order = [
+            'category.csv',
+            'genre.csv',
+            'titles.csv',
+            'genre_title.csv',
+            'users.csv',
+            'review.csv',
+            'comments.csv',
+        ]
 
-        with open('static/data/genre_title.csv', 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                title = Title.objects.get(id=row['title_id'])
-                genre = Genre.objects.get(id=row['genre_id'])
-                title.genre.add(genre)
-        self.stdout.write('Genre-Title relations imported')
+        for filename in import_order:
+            model = CSV_FILES.get(filename)
+            if filename == 'genre_title.csv':
+                self._import_genre_title(filename)
+            elif model:
+                self._import_model_data(filename, model)
+            else:
+                self.stderr.write(f'Неизвестный файл: {filename}')
 
-        # with open('static/data/users.csv', 'r', encoding='utf-8') as f:
-        #     reader = csv.DictReader(f)
-        #     for row in reader:
-        #         User.objects.get_or_create(
-        #             id=row['id'],
-        #             username=row['username'],
-        #             email=row['email'],
-        #             role=row['role'],
-        #             bio=row['bio'],
-        #             first_name=row['first_name'],
-        #             last_name=row['last_name']
-        #         )
-        # self.stdout.write('Users imported')
-
-        with open('static/data/review.csv', 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                Review.objects.get_or_create(
-                    id=row['id'],
-                    title_id=row['title_id'],
-                    author_id=row['author'],
-                    text=row['text'],
-                    score=row['score'],
-                    pub_date=row['pub_date']
-                )
-        self.stdout.write('Reviews imported')
-
-        with open('static/data/comments.csv', 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                Comment.objects.get_or_create(
-                    id=row['id'],
-                    review_id=row['review_id'],
-                    author_id=row['author'],
-                    text=row['text'],
-                    pub_date=row['pub_date']
-                )
-        self.stdout.write('Comments imported')
+        self.stdout.write(self.style.SUCCESS('Импорт успешно завершен!'))
