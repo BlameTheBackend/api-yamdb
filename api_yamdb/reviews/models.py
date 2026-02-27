@@ -16,7 +16,7 @@ class Category(models.Model):
     Модель для категорий произведений.
     Категории определяют тип произведения: фильмы, книги, музыка и т.д.
     """
-    title = models.CharField(
+    name = models.CharField(
         max_length=MAX_CHAR_FIELD_LENGTH,
         verbose_name='Название категории'
     )
@@ -40,7 +40,7 @@ class Genre(models.Model):
     Жанры определяют стиль или направление произведения:
     драма, комедия, рок и т.д.
     """
-    title = models.CharField(
+    name = models.CharField(
         max_length=MAX_CHAR_FIELD_LENGTH,
         verbose_name='Название жанра'
     )

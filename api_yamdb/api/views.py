@@ -1,10 +1,9 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import mixins, viewsets
+from rest_framework import viewsets
 from rest_framework.filters import SearchFilter
-from rest_framework.pagination import LimitOffsetPagination
-from rest_framework.permissions import IsAuthenticated
+from django.db.models import Avg
 
-from reviews.models import Category, Genre, Title, Review, Comment
+from reviews.models import Category, Genre, Title, Review
 from .permissions import (
     IsAdminOrReadOnly,
     IsAuthorOrAdminOrModeratorOrReadOnly
@@ -31,7 +30,7 @@ class GenreViewSet(viewsets.ModelViewSet):
 
 
 class TitleViewSet(viewsets.ModelViewSet):
-    queryset = Title.objects.all()
+    queryset = Title.objects.annotate(rating=Avg('reviews__score'))
     serializer_class = TitleSerializer
     permission_classes = [IsAdminOrReadOnly]
     filter_backends = (SearchFilter,)
