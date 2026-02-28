@@ -1,11 +1,12 @@
 import re
 
 from django.contrib.auth import get_user_model
+
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound
 
-from reviews.models import Category, Genre, Title, Review, Comment
 from reviews.constants import MIN_RATE, MAX_RATE
+from reviews.models import Category, Genre, Title, Review, Comment
 from users.utils import check_confirmation_code
 
 
