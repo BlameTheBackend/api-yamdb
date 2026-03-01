@@ -1,6 +1,8 @@
 from django.urls import include, path
+
 from rest_framework import routers
 
+from .constants import API_VERSION
 from .views import (
     CategoryViewSet,
     GenreViewSet,
@@ -11,7 +13,6 @@ from .views import (
     SignupView,
     TokenView
 )
-from .constants import API_VERSION
 
 
 api_v1_router = routers.DefaultRouter()
