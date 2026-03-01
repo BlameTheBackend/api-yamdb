@@ -1,9 +1,11 @@
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
+from datetime import date
 
 from .constants import (
     MAX_CHAR_FIELD_LENGTH,
+    MAX_CHAR_SLUG_LENGTH,
     MAX_RATE,
     MIN_RATE
 )
@@ -21,6 +23,7 @@ class Category(models.Model):
         verbose_name='Название категории'
     )
     slug = models.SlugField(
+        max_length=MAX_CHAR_SLUG_LENGTH,
         unique=True,
         verbose_name='Уникальный идентификатор'
     )
@@ -31,7 +34,7 @@ class Category(models.Model):
         verbose_name_plural = 'категории'
 
     def __str__(self):
-        return self.title
+        return self.name
 
 
 class Genre(models.Model):
@@ -45,6 +48,7 @@ class Genre(models.Model):
         verbose_name='Название жанра'
     )
     slug = models.SlugField(
+        max_length=MAX_CHAR_SLUG_LENGTH,
         unique=True,
         verbose_name='Уникальный идентификатор'
     )
@@ -55,7 +59,7 @@ class Genre(models.Model):
         verbose_name_plural = 'жанры'
 
     def __str__(self):
-        return self.title
+        return self.name
 
 
 class Title(models.Model):
@@ -69,7 +73,11 @@ class Title(models.Model):
         verbose_name='Название произведения'
     )
     year = models.IntegerField(
-        verbose_name='Год выпуска'
+        verbose_name='Год выпуска',
+        validators=[
+            MinValueValidator(1800),
+            MaxValueValidator(date.today().year)
+        ]
     )
     description = models.TextField(
         blank=True,
