@@ -1,66 +1,35 @@
-from datetime import date
-
 from django.contrib.auth import get_user_model
-from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
-from .constants import (
-    MAX_CHAR_FIELD_LENGTH,
-    MAX_CHAR_SLUG_LENGTH,
-    MAX_RATE,
-    MIN_RATE
-)
-
+from .constants import MAX_CHAR_FIELD_LENGTH
+from .validators import validate_year, validate_score
+from .abstract_models import ContentModel, NameSlugModel
 User = get_user_model()
 
 
-class Category(models.Model):
+class Category(NameSlugModel):
     """
     Модель для категорий произведений.
     Категории определяют тип произведения: фильмы, книги, музыка и т.д.
     """
-    name = models.CharField(
-        max_length=MAX_CHAR_FIELD_LENGTH,
-        verbose_name='Название категории'
-    )
-    slug = models.SlugField(
-        max_length=MAX_CHAR_SLUG_LENGTH,
-        unique=True,
-        verbose_name='Уникальный идентификатор'
-    )
 
     class Meta:
         db_table = 'category'
         verbose_name = 'Категория'
         verbose_name_plural = 'категории'
 
-    def __str__(self):
-        return self.name
 
-
-class Genre(models.Model):
+class Genre(NameSlugModel):
     """
     Модель для жанров произведений.
     Жанры определяют стиль или направление произведения:
     драма, комедия, рок и т.д.
     """
-    name = models.CharField(
-        max_length=MAX_CHAR_FIELD_LENGTH,
-        verbose_name='Название жанра'
-    )
-    slug = models.SlugField(
-        max_length=MAX_CHAR_SLUG_LENGTH,
-        unique=True,
-        verbose_name='Уникальный идентификатор'
-    )
 
     class Meta:
         db_table = 'genre'
         verbose_name = 'Жанр'
         verbose_name_plural = 'жанры'
-
-    def __str__(self):
-        return self.name
 
 
 class Title(models.Model):
@@ -75,10 +44,7 @@ class Title(models.Model):
     )
     year = models.IntegerField(
         verbose_name='Год выпуска',
-        validators=[
-            MinValueValidator(1800),
-            MaxValueValidator(date.today().year)
-        ]
+        validators=[validate_year]
     )
     description = models.TextField(
         blank=True,
@@ -115,7 +81,7 @@ class Title(models.Model):
         return self.name
 
 
-class Review(models.Model):
+class Review(ContentModel):
     """
     Модель для отзывов на произведения.
     """
@@ -125,32 +91,15 @@ class Review(models.Model):
         related_name='reviews',
         verbose_name='Произведение'
     )
-    text = models.TextField(
-        verbose_name='Текст отзыва'
-    )
-    author = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='reviews',
-        verbose_name='Автор отзыва'
-    )
     score = models.IntegerField(
-        validators=[
-            MinValueValidator(MIN_RATE),
-            MaxValueValidator(MAX_RATE)
-        ],
+        validators=[validate_score],
         verbose_name='Оценка'
-    )
-    pub_date = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name='Дата публикации'
     )
 
     class Meta:
         db_table = 'review'
         verbose_name = 'Отзыв'
         verbose_name_plural = 'Отзывы'
-        ordering = ('-pub_date',)
         constraints = [
             models.UniqueConstraint(
                 fields=['title', 'author'],
@@ -162,7 +111,7 @@ class Review(models.Model):
         return f'Отзыв {self.author} на {self.title}'
 
 
-class Comment(models.Model):
+class Comment(ContentModel):
     """
     Модель для комментариев к отзывам.
     """
@@ -172,25 +121,11 @@ class Comment(models.Model):
         related_name='comments',
         verbose_name='Комментарий'
     )
-    text = models.TextField(
-        verbose_name='Текст комментария'
-    )
-    author = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='comments',
-        verbose_name='Автор комментария'
-    )
-    pub_date = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name='Дата публикации'
-    )
 
     class Meta:
         db_table = 'comment'
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
-        ordering = ('-pub_date',)
 
     def __str__(self):
         return f'Комментарий {self.author} к отзыву {self.review.id}'

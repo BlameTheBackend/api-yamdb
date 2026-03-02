@@ -3,12 +3,13 @@ from django.core.mail import send_mail
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 
-from rest_framework import viewsets, filters, status, mixins
+from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import AccessToken
+from django_filters.rest_framework import DjangoFilterBackend
 
 from reviews.models import Category, Genre, Title, Review
 from users.utils import generate_confirmation_code
@@ -28,6 +29,8 @@ from .serializers import (
     SignupSerializer,
     TokenSerializer
 )
+from .mixins import CreateListDestroyViewSet
+from .filters import TitleFilter
 
 User = get_user_model()
 
@@ -91,10 +94,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class CategoryViewSet(
-    mixins.ListModelMixin, mixins.CreateModelMixin,
-    mixins.DestroyModelMixin, viewsets.GenericViewSet
-):
+class CategoryViewSet(CreateListDestroyViewSet):
     """
     Управление категориями.
     Доступно: список, создание, удаление.
@@ -102,19 +102,9 @@ class CategoryViewSet(
 
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = [IsAdminOrReadOnly]
-    lookup_field = 'slug'
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ('^name',)
-
-    def retrieve(self, request, *args, **kwargs):
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
-class GenreViewSet(
-    mixins.ListModelMixin, mixins.CreateModelMixin,
-    mixins.DestroyModelMixin, viewsets.GenericViewSet
-):
+class GenreViewSet(CreateListDestroyViewSet):
     """
     Управление жанрами.
     Доступно: список, создание, удаление.
@@ -122,13 +112,6 @@ class GenreViewSet(
 
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
-    permission_classes = [IsAdminOrReadOnly]
-    lookup_field = 'slug'
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ('^name',)
-
-    def retrieve(self, request, *args, **kwargs):
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
 class TitleViewSet(viewsets.ModelViewSet):
@@ -138,18 +121,9 @@ class TitleViewSet(viewsets.ModelViewSet):
     serializer_class = TitleSerializer
     permission_classes = [IsAdminOrReadOnly]
     http_method_names = ['get', 'post', 'patch', 'delete']
-
-    def get_queryset(self):
-        queryset = self.queryset
-        if genre := self.request.query_params.get('genre'):
-            queryset = queryset.filter(genre__slug=genre)
-        if category := self.request.query_params.get('category'):
-            queryset = queryset.filter(category__slug=category)
-        if year := self.request.query_params.get('year'):
-            queryset = queryset.filter(year=year)
-        if name := self.request.query_params.get('name'):
-            queryset = queryset.filter(name=name)
-        return queryset
+    filter_backends = (DjangoFilterBackend, filters.SearchFilter)
+    filterset_class = TitleFilter
+    search_fields = ('name', 'description')
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
