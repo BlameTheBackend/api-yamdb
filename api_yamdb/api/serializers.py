@@ -1,14 +1,11 @@
 import re
 
-from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound
 
 from reviews.models import Category, Genre, Title, Review, Comment
+from users.models import User
 from users.utils import check_confirmation_code
-
-
-User = get_user_model()
 
 
 class SignupSerializer(serializers.Serializer):

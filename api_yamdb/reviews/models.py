@@ -1,10 +1,8 @@
-from django.contrib.auth import get_user_model
 from django.db import models
 
 from .constants import MAX_CHAR_FIELD_LENGTH
 from .validators import validate_year, validate_score
 from .abstract_models import ContentModel, NameSlugModel
-User = get_user_model()
 
 
 class Category(NameSlugModel):

@@ -1,4 +1,3 @@
-from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
@@ -12,6 +11,7 @@ from rest_framework_simplejwt.tokens import AccessToken
 from django_filters.rest_framework import DjangoFilterBackend
 
 from reviews.models import Category, Genre, Title, Review
+from users.models import User
 from users.utils import generate_confirmation_code
 from .permissions import (
     IsAdminRole,
@@ -31,8 +31,6 @@ from .serializers import (
 )
 from .mixins import CreateListDestroyViewSet
 from .filters import TitleFilter
-
-User = get_user_model()
 
 
 class SignupView(APIView):

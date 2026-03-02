@@ -1,9 +1,7 @@
 from django.db import models
-from django.contrib.auth import get_user_model
 
 from .constants import MAX_CHAR_FIELD_LENGTH, MAX_CHAR_SLUG_LENGTH
-
-User = get_user_model()
+from users.models import User
 
 
 class NameSlugModel(models.Model):
