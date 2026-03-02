@@ -1,16 +1,11 @@
 import re
 
-from django.contrib.auth import get_user_model
-
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound
 
-from reviews.constants import MIN_RATE, MAX_RATE
 from reviews.models import Category, Genre, Title, Review, Comment
+from users.models import User
 from users.utils import check_confirmation_code
-
-
-User = get_user_model()
 
 
 class SignupSerializer(serializers.Serializer):
@@ -34,27 +29,17 @@ class SignupSerializer(serializers.Serializer):
             )
         return value
 
-    def validate_email(self, value):
-        """Проверка длины email (макс. 254)."""
-
-        if len(value) > 254:
-            raise serializers.ValidationError(
-                'Email не может быть длиннее 254 символов'
-            )
-        return value
-
     def validate(self, data):
         """Проверка уникальности username и email."""
 
         username = data.get('username')
         email = data.get('email')
 
-        if User.objects.filter(username=username).exists():
-            user = User.objects.get(username=username)
-            if user.email != email:
-                raise serializers.ValidationError(
-                    'Пользователь с таким username уже существует'
-                )
+        user = User.objects.filter(username=username).first()
+        if user and user.email != email:
+            raise serializers.ValidationError(
+                'Пользователь с таким username уже существует'
+            )
 
         if (
             User.objects.filter(email=email)
@@ -70,11 +55,10 @@ class SignupSerializer(serializers.Serializer):
     def create(self, validated_data):
         """Создание или получение пользователя."""
 
-        user, created = User.objects.get_or_create(
+        return User.objects.get_or_create(
             username=validated_data['username'],
             defaults={'email': validated_data['email']}
-        )
-        return user
+        )[0]
 
 
 class TokenSerializer(serializers.Serializer):
@@ -89,7 +73,7 @@ class TokenSerializer(serializers.Serializer):
         try:
             user = User.objects.get(username=data['username'])
         except User.DoesNotExist:
-            raise NotFound('Пользователь не найден')  # DRF сам вернет 404
+            raise NotFound('Пользователь не найден')
 
         if not check_confirmation_code(user, data['confirmation_code']):
             raise serializers.ValidationError(
@@ -110,23 +94,20 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
 
 
-class MyselfSerializer(serializers.ModelSerializer):
+class MyselfSerializer(UserSerializer):
     """Сериализатор для профиля текущего пользователя."""
 
     role = serializers.CharField(read_only=True)
 
-    class Meta:
-        fields = (
-            'username', 'email', 'first_name', 'last_name', 'bio', 'role'
-        )
-        model = User
+    class Meta(UserSerializer.Meta):
+        read_only_fields = ('role',)
 
 
 class CategorySerializer(serializers.ModelSerializer):
     """Сериализатор для категорий."""
 
     class Meta:
-        fields = ('name', 'slug')
+        exclude = ('id',)
         model = Category
 
 
@@ -134,7 +115,7 @@ class GenreSerializer(serializers.ModelSerializer):
     """Сериализатор для жанров."""
 
     class Meta:
-        fields = ('name', 'slug')
+        exclude = ('id',)
         model = Genre
 
 
@@ -150,7 +131,7 @@ class TitleSerializer(serializers.ModelSerializer):
         queryset=Genre.objects.all(),
         many=True
     )
-    rating = serializers.IntegerField(read_only=True)
+    rating = serializers.FloatField(read_only=True)
 
     class Meta:
         fields = (
@@ -178,22 +159,18 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = ('id', 'text', 'author', 'score', 'pub_date')
-        read_only_fields = ('author', 'pub_date', 'title')
-
-    def validate_score(self, rate):
-        """Проверка оценки (1-10)."""
-
-        if not MIN_RATE <= rate <= MAX_RATE:
-            raise serializers.ValidationError(
-                f'Оценка должна быть от {MIN_RATE} до {MAX_RATE}'
-            )
-        return rate
+        read_only_fields = ('author', 'pub_date')
 
     def validate(self, data):
         """Проверка уникальности отзыва пользователя на произведение."""
 
         request = self.context['request']
         title = self.context.get('title')
+
+        if not title:
+            raise serializers.ValidationError(
+                'Произведение не найдено'
+            )
 
         if request.method == 'POST' and title:
             if Review.objects.filter(
@@ -216,4 +193,4 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ('id', 'text', 'author', 'pub_date')
-        read_only_fields = ('author', 'pub_date', 'review')
+        read_only_fields = ('author', 'pub_date')

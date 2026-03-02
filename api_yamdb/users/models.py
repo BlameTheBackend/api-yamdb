@@ -7,6 +7,7 @@ class User(AbstractUser):
         USER = 'user'
         MODERATOR = 'moderator'
         ADMIN = 'admin'
+
     email = models.EmailField(
         max_length=254,
         unique=True,
@@ -24,6 +25,21 @@ class User(AbstractUser):
     )
 
     REQUIRED_FIELDS = ['email']
+
+    @property
+    def is_admin(self):
+        """Проверка, является ли пользователь администратором."""
+        return self.role == self.Role.ADMIN or self.is_superuser
+
+    @property
+    def is_moderator(self):
+        """Проверка, является ли пользователь модератором."""
+        return self.role == self.Role.MODERATOR
+
+    @property
+    def is_user(self):
+        """Проверка, является ли пользователь обычным пользователем."""
+        return self.role == self.Role.USER
 
     class Meta:
         verbose_name = 'Пользователь'
