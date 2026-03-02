@@ -1,6 +1,116 @@
 from django.contrib import admin
-from .models import Category, Genre, Title
+from django.db.models import Avg
 
-admin.site.register(Category)
-admin.site.register(Genre)
-admin.site.register(Title)
+from .models import Category, Genre, Title, Review, Comment
+from users.models import User
+
+
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+    """Категории произведений."""
+    list_display = ('id', 'name', 'slug')
+    search_fields = ('name', 'slug')
+    prepopulated_fields = {'slug': ('name',)}
+    ordering = ('name',)
+
+
+@admin.register(Genre)
+class GenreAdmin(admin.ModelAdmin):
+    """Жанры произведений."""
+    list_display = ('id', 'name', 'slug')
+    search_fields = ('name', 'slug')
+    prepopulated_fields = {'slug': ('name',)}
+    ordering = ('name',)
+
+
+@admin.register(Title)
+class TitleAdmin(admin.ModelAdmin):
+    """Произведения."""
+    list_display = (
+        'id', 'name', 'year', 'category', 'display_genres', 'rating'
+    )
+    list_filter = ('year', 'category', 'genre')
+    search_fields = ('name', 'description')
+    filter_horizontal = ('genre',)
+    raw_id_fields = ('category',)
+    ordering = ('-year', 'name')
+
+    def display_genres(self, obj):
+        """Жанры через запятую (первые 3)."""
+        genres = obj.genre.all()[:3]
+        return ', '.join([genre.name for genre in genres])
+
+    display_genres.short_description = 'Жанры'
+
+    def rating(self, obj):
+        """Средняя оценка."""
+        avg = obj.reviews.aggregate(Avg('score'))['score__avg']
+        return round(avg, 1) if avg else '—'
+
+    rating.short_description = 'Рейтинг'
+
+
+@admin.register(Review)
+class ReviewAdmin(admin.ModelAdmin):
+    """Отзывы."""
+    list_display = (
+        'id', 'title_name', 'author', 'score', 'pub_date', 'short_text'
+    )
+    list_filter = ('score', 'pub_date')
+    search_fields = ('text', 'author__username', 'title__name')
+    raw_id_fields = ('author', 'title')
+    ordering = ('-pub_date',)
+
+    def title_name(self, obj):
+        return obj.title.name
+
+    title_name.short_description = 'Произведение'
+    title_name.admin_order_field = 'title__name'
+
+    def short_text(self, obj):
+        return obj.text[:50] + '…' if len(obj.text) > 50 else obj.text
+
+    short_text.short_description = 'Текст'
+
+
+@admin.register(Comment)
+class CommentAdmin(admin.ModelAdmin):
+    """Комментарии."""
+    list_display = ('id', 'review_info', 'author', 'pub_date', 'short_text')
+    list_filter = ('pub_date',)
+    search_fields = ('text', 'author__username')
+    raw_id_fields = ('author', 'review')
+    ordering = ('-pub_date',)
+
+    def review_info(self, obj):
+        return f'Отзыв #{obj.review.id} на "{obj.review.title.name}"'
+
+    review_info.short_description = 'Отзыв'
+    review_info.admin_order_field = 'review'
+
+    def short_text(self, obj):
+        return obj.text[:50] + '…' if len(obj.text) > 50 else obj.text
+
+    short_text.short_description = 'Текст'
+
+
+@admin.register(User)
+class UserAdmin(admin.ModelAdmin):
+    """Пользователи."""
+    list_display = (
+        'id', 'username', 'email', 'role', 'is_active', 'date_joined'
+    )
+    list_filter = ('role', 'is_active', 'is_staff')
+    search_fields = ('username', 'email')
+    ordering = ('-date_joined',)
+    fieldsets = (
+        ('Основное', {
+            'fields': ('username', 'email', 'password')
+        }),
+        ('Личная информация', {
+            'fields': ('bio',)
+        }),
+        ('Права', {
+            'fields': ('role', 'is_active', 'is_staff', 'is_superuser')
+        }),
+    )
