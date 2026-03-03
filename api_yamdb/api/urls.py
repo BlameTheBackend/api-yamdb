@@ -1,5 +1,5 @@
 from django.urls import include, path
-from rest_framework import routers
+from rest_framework.routers import DefaultRouter
 
 from .constants import API_VERSION
 from .views import (
@@ -14,7 +14,7 @@ from .views import (
 )
 
 
-api_v1_router = routers.DefaultRouter()
+api_v1_router = DefaultRouter()
 api_v1_router.register('users', UserViewSet)
 api_v1_router.register('categories', CategoryViewSet)
 api_v1_router.register('genres', GenreViewSet)
