@@ -1,9 +1,8 @@
 from datetime import date
 
 from django.core.exceptions import ValidationError
-from django.utils.translation import gettext_lazy as _
 
-from .constants import MIN_RATE, MAX_RATE
+from .constants import MIN_RATE, MAX_RATE, MIN_YEAR
 
 
 def validate_year(value):
@@ -13,16 +12,14 @@ def validate_year(value):
     """
     current_year = date.today().year
 
-    if value < 1800:
+    if value < MIN_YEAR:
         raise ValidationError(
-            _('Год выпуска не может быть меньше %(min_year)s'),
-            params={'min_year': 1800},
+            f'Год выпуска не может быть меньше {MIN_YEAR}'
         )
 
     if value > current_year:
         raise ValidationError(
-            _('Год выпуска не может быть больше %(current_year)s'),
-            params={'current_year': current_year},
+            f'Год выпуска не может быть больше {current_year}'
         )
 
 
@@ -33,10 +30,5 @@ def validate_score(value):
     """
     if value < MIN_RATE or value > MAX_RATE:
         raise ValidationError(
-            _(f'Оценка должна быть от {MIN_RATE} до {MAX_RATE}'),
-            params={
-                'min_rate': MIN_RATE,
-                'max_rate': MAX_RATE,
-                'value': value
-            },
+            f'Оценка должна быть от {MIN_RATE} до {MAX_RATE}'
         )

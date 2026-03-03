@@ -11,7 +11,7 @@ class Category(NameSlugModel):
     Категории определяют тип произведения: фильмы, книги, музыка и т.д.
     """
 
-    class Meta:
+    class Meta(NameSlugModel.Meta):
         db_table = 'category'
         verbose_name = 'Категория'
         verbose_name_plural = 'категории'
@@ -24,7 +24,7 @@ class Genre(NameSlugModel):
     драма, комедия, рок и т.д.
     """
 
-    class Meta:
+    class Meta(NameSlugModel.Meta):
         db_table = 'genre'
         verbose_name = 'Жанр'
         verbose_name_plural = 'жанры'
@@ -94,7 +94,7 @@ class Review(ContentModel):
         verbose_name='Оценка'
     )
 
-    class Meta:
+    class Meta(ContentModel.Meta):
         db_table = 'review'
         verbose_name = 'Отзыв'
         verbose_name_plural = 'Отзывы'
@@ -120,7 +120,7 @@ class Comment(ContentModel):
         verbose_name='Комментарий'
     )
 
-    class Meta:
+    class Meta(ContentModel.Meta):
         db_table = 'comment'
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
